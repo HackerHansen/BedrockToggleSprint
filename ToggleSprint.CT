@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CheatTable CheatEngineTableVersion="34">
+  <CheatEntries>
+    <CheatEntry>
+      <ID>147</ID>
+      <Description>"Toggle Sprint "</Description>
+      <LastState/>
+      <VariableType>Auto Assembler Script</VariableType>
+      <AssemblerScript>[ENABLE]
+aobscanmodule(GetSprintState,Minecraft.Windows.exe,00 00 48 85 50 10 74 0D) // should be unique
+alloc(newmem,$1000,GetSprintState)
+
+label(code)
+label(return)
+label(sprinting)
+
+registersymbol(sprinting)
+newmem:
+
+code:
+  push eax
+  mov eax,[rax+10]
+  mov [sprinting],eax
+  pop eax
+  test [rax+10],rdx
+  je Minecraft.Windows.exe+1A83BE7
+  jmp return
+
+  sprinting:
+    dd 0
+
+GetSprintState+02:
+  jmp newmem
+  nop
+return:
+registersymbol(GetSprintState)
+
+{$lua}
+toggled = 0
+wasPressed = 0
+
+
+
+f = createForm(false)
+f.BorderStyle = 'bsNone'
+f.Color = 0x000000
+f.setLayeredAttributes(0x00, 255, 3)
+f.FormStyle="fsSystemStayOnTop"
+
+local overlay = createLabel(f)
+overlay.font.size = 10
+overlay.font.color = 0xFFFFFF
+overlay.Font.Quality = 'fqNonAntialiased'
+
+
+
+timer = createTimer(f)
+timer.Interval = 10
+timer.OnTimer = function()
+window=findWindow(nil,'Minecraft')
+mem=createMemoryStream()
+mem.size=8
+if executeCodeLocalEx('GetWindowRect',window,mem.Memory) then
+  x = mem.readDword() + 15
+  y = mem.readDword() + 30
+  if (x &gt; 100000) then x = 15 end
+  if (y &gt; 100000) then y = 30 end
+  f.left = x
+  f.top = y
+end
+mem.destroy()
+local mouseLockedAddress = getAddress("Minecraft.Windows.exe")
+mouseLockedAddress = readPointer(mouseLockedAddress + 0x03222B80)
+local mouseLocked = readBytes(mouseLockedAddress + 0x806,1)
+if (tonumber(mouseLocked) == 1) then
+  if isKeyPressed(VK_CONTROL) then
+    if (wasPressed == 0) then
+       toggle()
+       wasPressed = 1
+    end
+  else
+    wasPressed = 0
+  end
+end
+sprinting = readBytes("sprinting", 1)
+if (tonumber(mouseLocked) == 1) then
+  if (toggled == 1) then
+    overlay.caption = "[Sprinting (Toggled)]"
+  elseif (tonumber(sprinting) == 8) then
+    overlay.caption = "[Sprinting (Vanilla)]"
+  else
+    overlay.caption = ""
+  end
+else
+  overlay.caption = ""
+end
+end
+f.visible = true
+
+function toggle()
+toggled = (toggled+1)%2
+if (toggled == 1) then
+AutoAssemble( [[aobscanmodule(AutoSprint,Minecraft.Windows.exe,0F B6 41 5C 40 32 F6) // should be unique
+alloc(newmem,$1000,AutoSprint)
+
+label(code)
+label(return)
+
+newmem:
+
+code:
+  mov eax,1
+  xor sil,sil
+  jmp return
+
+AutoSprint:
+  jmp newmem
+  nop 2
+return:
+registersymbol(AutoSprint)]] )
+else
+AutoAssemble( [[AutoSprint:
+  db 0F B6 41 5C 40 32 F6
+
+unregistersymbol(AutoSprint)
+dealloc(newmem)]] )
+end
+end
+{$asm}
+[DISABLE]
+GetSprintState+02:
+  db 48 85 50 10 74 0D
+
+unregistersymbol(GetSprintState)
+unregistersymbol(sprinting)
+dealloc(newmem)
+{$lua}
+timer.destroy()
+f.destroy()
+if (toggled == 1) then
+AutoAssemble( [[AutoSprint:
+  db 0F B6 41 5C 40 32 F6
+
+unregistersymbol(AutoSprint)
+dealloc(newmem)]] )
+end
+</AssemblerScript>
+    </CheatEntry>
+  </CheatEntries>
+  <UserdefinedSymbols/>
+</CheatTable>
